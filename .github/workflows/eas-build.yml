@@ -47,8 +47,9 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     env:
-      # Optional override; app.config.ts falls back to the @sasquare project ID.
+      # Override the owner and project together; defaults target @inkdabba-dev/dabbas-ledger.
       EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+      EAS_OWNER: ${{ vars.EAS_OWNER }}
       PLATFORM: ${{ inputs.platform || 'android' }}
       PROFILE: ${{ inputs.profile || 'production' }}
     steps:
@@ -60,8 +61,10 @@ jobs:
           cache: npm
 
       - name: Check required settings
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then echo "::error::Add the EXPO_TOKEN repository secret."; exit 1; fi
+          if [ -z "$EXPO_TOKEN" ]; then echo "::error::Add the EXPO_TOKEN repository secret."; exit 1; fi
 
       - uses: expo/expo-github-action@v8
         with:
@@ -69,6 +72,11 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - run: npm ci
+
+      - name: Verify Expo account and project access
+        run: |
+          eas whoami
+          eas project:info
 
       - name: Write Play Store service account
         if: ${{ inputs.submit && env.PROFILE == 'production' && env.PLATFORM != 'ios' }}

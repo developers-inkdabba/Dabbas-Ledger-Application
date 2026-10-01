@@ -1,11 +1,11 @@
 import { ExpoConfig } from "expo/config";
 
 const packageName = "com.inkdabba.expense";
-// EAS CLI does not load .env, so the project ID must resolve without it.
-// Env vars still win (e.g. to build under another Expo account).
-const DEFAULT_EAS_PROJECT_ID = "a5a3bd39-3549-4ee0-93a1-6f9983ad8455"; // @sasquare/dabbas-ledger
-const easProjectId = process.env.EAS_PROJECT_ID || process.env.EXPO_PUBLIC_EAS_PROJECT_ID || DEFAULT_EAS_PROJECT_ID;
-const easOwner = process.env.EAS_OWNER || "sasquare";
+// Keep CI and local builds linked to the same Expo project, even without .env.
+// When changing accounts, override both EAS_PROJECT_ID and EAS_OWNER together.
+const DEFAULT_EAS_PROJECT_ID = "f3daf113-5150-4106-b584-21291a14bd83";
+const easProjectId = process.env.EAS_PROJECT_ID?.trim() || process.env.EXPO_PUBLIC_EAS_PROJECT_ID?.trim() || DEFAULT_EAS_PROJECT_ID;
+const easOwner = process.env.EAS_OWNER?.trim() || "inkdabba-dev";
 
 const config: ExpoConfig = {
   name: "Dabba's Ledger",

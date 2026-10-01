@@ -1,0 +1,8 @@
+<resources>
+  <string name="app_name">Dabba\'s Ledger</string>
+  <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
+  <string name="expo_splash_screen_status_bar_translucent" translatable="false">false</string>
+  <string name="expo_runtime_version">sdk57-1</string>
+  <string name="expo_updates_url">https://u.expo.dev/efeb4670-5b23-423e-9dff-428780e40f6d</string>
+  <string name="expo_system_ui_user_interface_style" translatable="false">automatic</string>
+</resources>

@@ -1,0 +1,76 @@
+{
+  "cli": {
+    "version": ">= 14.4.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "APP_ENV": "development",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBXF3T8XrKYRnqi0RY2dQoSpb-p2niNngM",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "dabbas-ledger.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "dabbas-ledger",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "dabbas-ledger.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "972033046188",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:972033046188:web:a02c704e81e3fd89185109",
+        "EXPO_PUBLIC_DEFAULT_COMPANY_ID": "inkdabba",
+        "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME": "dxba7g7en",
+        "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET": "expense-app"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "preview",
+      "env": {
+        "APP_ENV": "preview",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBXF3T8XrKYRnqi0RY2dQoSpb-p2niNngM",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "dabbas-ledger.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "dabbas-ledger",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "dabbas-ledger.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "972033046188",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:972033046188:web:a02c704e81e3fd89185109",
+        "EXPO_PUBLIC_DEFAULT_COMPANY_ID": "inkdabba",
+        "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME": "dxba7g7en",
+        "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET": "expense-app"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "channel": "production",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "simulator": false
+      },
+      "env": {
+        "APP_ENV": "production",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyBXF3T8XrKYRnqi0RY2dQoSpb-p2niNngM",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "dabbas-ledger.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "dabbas-ledger",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "dabbas-ledger.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "972033046188",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:972033046188:web:a02c704e81e3fd89185109",
+        "EXPO_PUBLIC_DEFAULT_COMPANY_ID": "inkdabba",
+        "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME": "dxba7g7en",
+        "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET": "expense-app"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "internal"
+      },
+      "ios": {
+        "appleId": "inkdabba.ai@gmail.com"
+      }
+    }
+  }
+}

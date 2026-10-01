@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "rules": "expense-app-ink",
+    "expense-app-ink": "expense-app-ink",
+    "default": "dabbas-ledger"
+  },
+  "targets": {},
+  "etags": {}
+}

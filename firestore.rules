@@ -1,0 +1,288 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profilePath(companyId) {
+      return /databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid);
+    }
+
+    function invitePath(code) {
+      return /databases/$(database)/documents/companyInvites/$(code);
+    }
+
+    function validInviteFor(companyId, code) {
+      return code is string
+        && exists(invitePath(code))
+        && get(invitePath(code)).data.companyId == companyId
+        && get(invitePath(code)).data.isActive == true;
+    }
+
+    function isCompanyMember(companyId) {
+      return signedIn()
+        && exists(profilePath(companyId))
+        && get(profilePath(companyId)).data.isActive == true;
+    }
+
+    function role(companyId) {
+      return get(profilePath(companyId)).data.role;
+    }
+
+    function isAdmin(companyId) {
+      return isCompanyMember(companyId) && role(companyId) == "admin";
+    }
+
+    function isManager(companyId) {
+      return isCompanyMember(companyId) && (role(companyId) == "manager" || role(companyId) == "admin");
+    }
+
+    match /companies/{companyId} {
+      allow read: if isCompanyMember(companyId);
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isAdmin(companyId);
+      allow delete: if false;
+
+      match /users/{userId} {
+        allow get: if (signedIn()
+            && userId == request.auth.uid
+            && resource.data.companyId == companyId)
+          || (isCompanyMember(companyId) && isManager(companyId))
+          || (isCompanyMember(companyId) && userId == request.auth.uid)
+          || (signedIn()
+            && userId == request.auth.uid
+            && resource.data.companyId == companyId
+            && resource.data.approvalStatus in ["pending", "rejected"]);
+        allow list: if isManager(companyId);
+        allow create: if (isAdmin(companyId) && userId == request.resource.data.authUid)
+          || (signedIn()
+            && userId == request.auth.uid
+            && request.resource.data.authUid == request.auth.uid
+            && request.resource.data.companyId == companyId
+            && request.resource.data.role == "employee"
+            && request.resource.data.isActive == false
+            && request.resource.data.approvalStatus == "pending"
+            && validInviteFor(companyId, request.resource.data.companyInviteCode)
+            && request.resource.data.keys().hasOnly([
+              "authUid", "companyId", "name", "email", "userCode", "role", "department",
+              "phoneNumber", "isActive", "approvalStatus", "requestedCompanyName",
+              "companyInviteCode", "createdAt", "updatedAt"
+            ]));
+        allow update: if isAdmin(companyId)
+          || (
+            isManager(companyId)
+            && resource.data.approvalStatus == "pending"
+            && request.resource.data.companyId == companyId
+            && request.resource.data.role == "employee"
+            && request.resource.data.approvalStatus == "approved"
+            && request.resource.data.isActive == true
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              "isActive", "approvalStatus", "department", "approvedAt", "approvedBy",
+              "approvedByName", "updatedAt"
+            ])
+          )
+          || (
+            isManager(companyId)
+            && resource.data.approvalStatus == "pending"
+            && request.resource.data.companyId == companyId
+            && request.resource.data.role == "employee"
+            && request.resource.data.approvalStatus == "rejected"
+            && request.resource.data.isActive == false
+            && request.resource.data.rejectionReason is string
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              "isActive", "approvalStatus", "rejectionReason", "rejectedAt", "rejectedBy",
+              "rejectedByName", "updatedAt"
+            ])
+          )
+          || (userId == request.auth.uid
+            && request.resource.data.diff(resource.data).changedKeys().hasOnly(["name", "phoneNumber", "updatedAt"]));
+        allow delete: if false;
+      }
+
+      match /projects/{projectId} {
+        allow read: if isCompanyMember(companyId);
+        allow create, update, delete: if isAdmin(companyId);
+      }
+
+      match /expenses/{expenseId} {
+        allow read: if isManager(companyId)
+          || (isCompanyMember(companyId)
+            && (resource.data.userId == request.auth.uid
+              || (resource.data.user is map && resource.data.user.authUid == request.auth.uid)));
+        allow create: if isCompanyMember(companyId)
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.status == "pending_manager"
+          && request.resource.data.amount is number
+          && request.resource.data.amount > 0
+          && request.resource.data.amount < 10000001
+          && request.resource.data.projectName is string
+          && request.resource.data.clientName is string
+          && request.resource.data.description is string
+          && request.resource.data.date is string
+          && request.resource.data.category is string
+          && request.resource.data.paymentMode is string
+          && request.resource.data.keys().hasOnly([
+            "userId", "user", "projectName", "clientName", "category", "amount", "date",
+            "paymentMode", "description", "receiptUrl", "receiptPublicId", "receiptType",
+            "status", "approvalLevel", "requiredApprovals", "approvedByUserIds",
+            "paidAmount", "remainingAmount", "settlementStatus", "settlementIds",
+            "createdAt", "updatedAt"
+          ]);
+        allow update: if (
+          isCompanyMember(companyId)
+          && resource.data.userId == request.auth.uid
+          && resource.data.status == "pending_manager"
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.status == "pending_manager"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "projectName", "clientName", "category", "amount", "date", "paymentMode",
+            "description", "receiptUrl", "receiptPublicId", "receiptType", "updatedAt"
+          ])
+          && request.resource.data.amount is number
+          && request.resource.data.amount > 0
+          && request.resource.data.amount < 10000001
+        ) || (
+          isManager(companyId)
+          && resource.data.status == "pending_manager"
+          && request.resource.data.status == "approved"
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "status", "approvalLevel", "approvedBy", "approvedByUser", "approvedByUserIds",
+            "approvedAt", "rejectionReason", "updatedAt"
+          ])
+        ) || (
+          isManager(companyId)
+          && resource.data.status in ["pending_manager", "approved"]
+          && request.resource.data.status == "rejected"
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.rejectionReason is string
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "status", "rejectionReason", "updatedAt"
+          ])
+        ) || (
+          isAdmin(companyId)
+          && resource.data.status == "approved"
+          && request.resource.data.status == "paid"
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "status", "paidBy", "paidByUser", "paidAt", "paidAmount", "remainingAmount",
+            "settlementStatus", "updatedAt"
+          ])
+        ) || (
+          isManager(companyId)
+          && resource.data.status == "approved"
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "paidAmount", "remainingAmount", "settlementStatus", "settlementIds",
+            "lastSettledAt", "updatedAt"
+          ])
+          && request.resource.data.paidAmount is number
+          && request.resource.data.remainingAmount is number
+          && request.resource.data.paidAmount >= 0
+          && request.resource.data.paidAmount <= resource.data.amount
+          && request.resource.data.remainingAmount >= 0
+          && request.resource.data.remainingAmount == resource.data.amount - request.resource.data.paidAmount
+          && request.resource.data.settlementStatus in ["partially_paid", "paid"]
+          && request.resource.data.settlementIds is list
+        );
+        allow delete: if isCompanyMember(companyId)
+          && resource.data.userId == request.auth.uid
+          && resource.data.status == "pending_manager";
+      }
+
+      match /paymentSettlements/{settlementId} {
+        allow read: if isManager(companyId)
+          || (isCompanyMember(companyId)
+            && (resource.data.createdBy == request.auth.uid || resource.data.userId == request.auth.uid));
+        allow create: if isManager(companyId)
+          && request.resource.data.companyId == companyId
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.userId is string
+          && request.resource.data.userId != request.auth.uid
+          && request.resource.data.receivedAmount is number
+          && request.resource.data.receivedAmount > 0
+          && request.resource.data.allocatedAmount is number
+          && request.resource.data.allocatedAmount > 0
+          && request.resource.data.allocatedAmount <= request.resource.data.receivedAmount
+          && request.resource.data.unallocatedAmount is number
+          && request.resource.data.unallocatedAmount >= 0
+          && request.resource.data.unallocatedAmount == request.resource.data.receivedAmount - request.resource.data.allocatedAmount
+          && request.resource.data.paymentDate is string
+          && request.resource.data.allocations is list
+          && request.resource.data.keys().hasOnly([
+            "id", "_id", "companyId", "userId", "userName", "receivedAmount", "allocatedAmount", "unallocatedAmount",
+            "paymentDate", "paymentMode", "referenceNote", "createdBy", "createdByName",
+            "createdAt", "allocations"
+          ]);
+        allow update, delete: if false;
+      }
+
+      match /auditLogs/{auditId} {
+        allow read: if isAdmin(companyId);
+        allow create: if isCompanyMember(companyId) && request.resource.data.actorId == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      match /settings/{settingId} {
+        allow read: if isCompanyMember(companyId);
+        allow write: if isAdmin(companyId);
+      }
+
+      match /expenseTemplates/{templateId} {
+        allow read: if isCompanyMember(companyId) && resource.data.userId == request.auth.uid;
+        allow create: if isCompanyMember(companyId)
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.companyId == companyId
+          && request.resource.data.name is string
+          && request.resource.data.category is string
+          && request.resource.data.paymentMode is string
+          && request.resource.data.keys().hasOnly([
+            "_id", "name", "category", "paymentMode", "projectName", "clientName",
+            "description", "amount", "companyId", "userId", "createdAt", "updatedAt"
+          ]);
+        allow delete: if isCompanyMember(companyId) && resource.data.userId == request.auth.uid;
+        allow update: if false;
+      }
+    }
+
+    match /userProfiles/{userId} {
+      allow get: if signedIn() && userId == request.auth.uid;
+      allow list: if false;
+      allow create, update: if signedIn()
+        && request.resource.data.companyId is string
+        && exists(/databases/$(database)/documents/companies/$(request.resource.data.companyId)/users/$(request.auth.uid))
+        && (
+          get(/databases/$(database)/documents/companies/$(request.resource.data.companyId)/users/$(request.auth.uid)).data.role == "admin"
+          || (get(/databases/$(database)/documents/companies/$(request.resource.data.companyId)/users/$(request.auth.uid)).data.role in ["manager", "admin"]
+            && request.resource.data.role == "employee"
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              "role", "isActive", "approvalStatus", "approvedAt", "approvedBy",
+              "rejectedAt", "rejectedBy", "updatedAt"
+            ]))
+          || (userId == request.auth.uid
+            && request.resource.data.role == "employee"
+            && request.resource.data.isActive == false
+            && request.resource.data.approvalStatus == "pending")
+        );
+      allow delete: if false;
+    }
+
+    match /companyInvites/{code} {
+      allow get: if true;
+      allow list: if signedIn() && isAdmin(resource.data.companyId);
+      allow create: if signedIn()
+        && request.resource.data.companyId is string
+        && isAdmin(request.resource.data.companyId)
+        && request.resource.data.code == code
+        && request.resource.data.isActive == true;
+      allow update: if signedIn()
+        && isAdmin(resource.data.companyId)
+        && request.resource.data.companyId == resource.data.companyId
+        && request.resource.data.code == code;
+      allow delete: if false;
+    }
+  }
+}
